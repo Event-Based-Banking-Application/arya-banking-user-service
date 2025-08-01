@@ -9,11 +9,11 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.arya.banking</groupId>
-    <artifactId>arya-banking-template</artifactId>
+    <artifactId>arya-banking-user-service</artifactId>
     <version>1.0.0</version>
-    <name>arya-banking-template</name>
-    <description>arya-banking-template</description>
-    <url>https://github.com/Event-Based-Banking-Application/arya-banking-common</url>
+    <name>arya-banking-user-service</name>
+    <description>arya-banking-user-service</description>
+    <url>https://github.com/Event-Based-Banking-Application/arya-banking-user-service</url>
 
     <licenses>
         <license>
@@ -34,9 +34,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/Event-Based-Banking-Application/arya-banking-common</connection>
-        <developerConnection>scm:git@github.com:Event-Based-Banking-Application/arya-banking-common.git</developerConnection>
-        <url>https://github.com/Event-Based-Banking-Application/arya-banking-common</url>
+        <connection>scm:git:https://github.com/Event-Based-Banking-Application/arya-banking-user-service</connection>
+        <developerConnection>scm:git@github.com:Event-Based-Banking-Application/arya-banking-user-service.git</developerConnection>
+        <url>https://github.com/Event-Based-Banking-Application/arya-banking-user-service</url>
         <tag>HEAD</tag>
     </scm>
 

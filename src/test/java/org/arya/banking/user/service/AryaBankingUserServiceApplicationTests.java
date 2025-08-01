@@ -1,10 +1,9 @@
-package org.arya.banking;
+package org.arya.banking.user.service;
 
-import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class AryaBankingTemplateApplicationTests {
+class AryaBankingUserServiceApplicationTests {
 
     void contextLoads() {
     }
