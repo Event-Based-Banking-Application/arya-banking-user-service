@@ -7,7 +7,7 @@ jobs:
   create-issues:
     uses: Event-Based-Banking-Application/arya-banking-workflows/.github/workflows/issue-creation.yaml@main
     secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      gh_token: ${{ secrets.ORG_ISSUE_TOKEN }}
 
   show-results:
     needs: create-issues
