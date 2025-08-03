@@ -1,0 +1,187 @@
+name: Delete All Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DELETE-ALL-ISSUES" to confirm permanent deletion'
+        required: true
+        type: string
+      include_closed:
+        description: 'Also delete closed issues'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  delete-all-issues:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.confirmation == 'DELETE-ALL-ISSUES' }}
+    
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install requests
+
+    - name: Delete all issues
+      env:
+        GITHUB_TOKEN: ${{ secrets.ORG_ISSUE_TOKEN }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.event.repository.name }}
+        INCLUDE_CLOSED: ${{ inputs.include_closed }}
+      run: |
+        import os
+        import json
+        import requests
+        import time
+
+        GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
+        REPO_OWNER = os.environ['REPO_OWNER']
+        REPO_NAME = os.environ['REPO_NAME']
+        INCLUDE_CLOSED = os.environ['INCLUDE_CLOSED'].lower() == 'true'
+
+        headers = {
+            'Authorization': f'token {GITHUB_TOKEN}',
+            'Accept': 'application/vnd.github+json'
+        }
+
+        print(f"🗑️  DELETING ALL ISSUES FROM {REPO_OWNER}/{REPO_NAME}")
+        print(f"📋 Include closed issues: {INCLUDE_CLOSED}")
+        print("=" * 50)
+
+        deleted_count = 0
+        failed_count = 0
+
+        def delete_issue(issue_number, title):
+            """Delete a single issue"""
+            url = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}'
+            response = requests.delete(url, headers=headers)
+            
+            if response.status_code == 204:
+                print(f"✅ Deleted issue #{issue_number}: {title[:60]}...")
+                return True
+            elif response.status_code == 404:
+                print(f"⚠️  Issue #{issue_number} already deleted or doesn't exist")
+                return True
+            else:
+                print(f"❌ Failed to delete issue #{issue_number}: HTTP {response.status_code}")
+                return False
+
+        # Fetch and delete all issues
+        page = 1
+        total_found = 0
+
+        while True:
+            # Determine state parameter
+            state = 'all' if INCLUDE_CLOSED else 'open'
+            
+            print(f"\n📄 Fetching page {page} ({state} issues)...")
+            
+            url = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues'
+            params = {
+                'state': state,
+                'page': page,
+                'per_page': 100,
+                'sort': 'created',
+                'direction': 'desc'
+            }
+            
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code != 200:
+                print(f"❌ Failed to fetch issues: HTTP {response.status_code}")
+                print(f"Response: {response.text}")
+                break
+            
+            issues = response.json()
+            
+            if not issues:
+                print("📝 No more issues found")
+                break
+            
+            print(f"🔍 Found {len(issues)} issues on this page")
+            total_found += len(issues)
+            
+            for issue in issues:
+                # Skip pull requests (they show up in issues API)
+                if 'pull_request' in issue:
+                    print(f"⏭️  Skipping PR #{issue['number']}: {issue['title'][:50]}...")
+                    continue
+                
+                print(f"🎯 Deleting issue #{issue['number']}: {issue['title'][:50]}...")
+                
+                if delete_issue(issue['number'], issue['title']):
+                    deleted_count += 1
+                else:
+                    failed_count += 1
+                
+                # Rate limiting - be nice to GitHub API
+                time.sleep(0.2)
+            
+            page += 1
+            
+            # Safety break for very large repos
+            if page > 100:
+                print("⚠️  Stopped at page 100 for safety. Run again if more issues remain.")
+                break
+
+        print("\n" + "=" * 50)
+        print(f"🎉 DELETION COMPLETE!")
+        print(f"📊 Summary:")
+        print(f"  - Total issues found: {total_found}")
+        print(f"  - Successfully deleted: {deleted_count}")
+        print(f"  - Failed to delete: {failed_count}")
+        print(f"  - Repository: {REPO_OWNER}/{REPO_NAME}")
+
+        # Also delete milestones if any exist
+        print(f"\n🎯 Checking for milestones to delete...")
+        milestones_url = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/milestones'
+        milestones_response = requests.get(milestones_url, headers=headers)
+        
+        if milestones_response.status_code == 200:
+            milestones = milestones_response.json()
+            print(f"📍 Found {len(milestones)} milestones")
+            
+            for milestone in milestones:
+                delete_url = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/milestones/{milestone["number"]}'
+                delete_response = requests.delete(delete_url, headers=headers)
+                
+                if delete_response.status_code == 204:
+                    print(f"✅ Deleted milestone: {milestone['title']}")
+                else:
+                    print(f"❌ Failed to delete milestone: {milestone['title']}")
+                
+                time.sleep(0.2)
+
+        print(f"\n✨ All cleanup completed for {REPO_OWNER}/{REPO_NAME}")
+
+      shell: python
+
+    - name: Verify deletion
+      env:
+        GITHUB_TOKEN: ${{ secrets.ORG_ISSUE_TOKEN }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.event.repository.name }}
+      run: |
+        echo "🔍 Verifying deletion..."
+        curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues?state=all&per_page=1" \
+          | python3 -c "
+        import sys, json
+        try:
+            data = json.load(sys.stdin)
+            remaining = len([issue for issue in data if 'pull_request' not in issue])
+            if remaining == 0:
+                print('✅ SUCCESS: No issues remaining in repository')
+            else:
+                print(f'⚠️  {remaining} issues may still remain')
+        except:
+            print('✅ No issues found (empty response)')
+        "
