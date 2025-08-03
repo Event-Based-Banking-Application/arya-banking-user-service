@@ -1,0 +1,462 @@
+[
+  {
+    "service": "User Management Service",
+    "issues": [
+      {
+        "task": "Register user (Step 1 - name, email, phone)",
+        "description": "Provide a REST API endpoint to receive and store initial user registration data: name, email, and phone number. Save these in a temporary or partial registration state and validate as necessary for later completion steps.",
+        "labels": ["user-management", "registration"]
+      },
+      {
+        "task": "Validate email format",
+        "description": "Implement backend logic to strictly validate email address format (RFC 5322 compliance), returning specific errors for invalid emails to assist frontend UX.",
+        "labels": ["user-management", "validation"]
+      },
+      {
+        "task": "Validate phone format",
+        "description": "Perform backend validation (e.g., regex or library) of phone number input, supporting local and international formats. Ensure only valid numbers are accepted.",
+        "labels": ["user-management", "validation"]
+      },
+      {
+        "task": "Check duplicate email/phone",
+        "description": "Query persistent store on registration to enforce email and phone’s uniqueness. Reject requests with duplicate contact info and return appropriate error messages.",
+        "labels": ["user-management", "validation"]
+      },
+      {
+        "task": "Store registration step state",
+        "description": "Track registration progress at each step for each user (such as a RegistrationProgress enum or status field). Use this for step resumption and multi-screen onboarding.",
+        "labels": ["user-management", "registration"]
+      },
+      {
+        "task": "Send email/OTP for verification",
+        "description": "Emit Kafka event to Notification Service for sending verification mail or OTP. Include payload fields such as correlation ID, contact info, token/OTP, and expiration settings.",
+        "labels": ["user-management", "notification", "kafka"]
+      },
+      {
+        "task": "Verify email",
+        "description": "Implement endpoint to process email verification—via link or code. On success, update DB to mark that email is verified. Support clear error transitions on expired/invalid tokens.",
+        "labels": ["user-management", "verification"]
+      },
+      {
+        "task": "Verify phone via OTP",
+        "description": "Allow phone verification via OTP. Endpoint accepts OTP submission, checks its correctness/expiration, and marks phone as verified if valid. Handle retries/locks for repeated errors.",
+        "labels": ["user-management", "verification"]
+      },
+      {
+        "task": "Create full User object on step 1",
+        "description": "Once initial registration is successful and contact info validated (even if unverified), persist a User domain object with fields: name, email, and phone for deeper onboarding.",
+        "labels": ["user-management", "registration"]
+      }
+    ]
+  },
+  {
+    "service": "Auth Service",
+    "issues": [
+      {
+        "task": "Register credentials (Step 2)",
+        "description": "Implement an endpoint for setting username and password. Ensure username uniqueness. Enforce strong password policy according to security requirements.",
+        "labels": ["auth", "registration"]
+      },
+      {
+        "task": "Save hashed password",
+        "description": "Hash all user passwords using a cryptographically secure algorithm (e.g., BCrypt, Argon2) with proper salting before persistence—never save plaintext passwords.",
+        "labels": ["auth", "security"]
+      },
+      {
+        "task": "Set security questions & answers",
+        "description": "Enable users to set security questions and answers; store answers hashed or obfuscated for use in future password resets or challenge flows. Support a minimum set of question choices.",
+        "labels": ["auth", "security"]
+      },
+      {
+        "task": "Login endpoint",
+        "description": "REST API for authentication. Accepts username/password, validates credentials, and returns success with JWT if valid, else error. Support audit-logging of every attempt.",
+        "labels": ["auth", "login"]
+      },
+      {
+        "task": "Track failed login attempts",
+        "description": "Track the count, timestamp, and reason for each failed login attempt per user (optionally per IP address) for brute-force detection and forensics. Place in DB or cache.",
+        "labels": ["auth", "security"]
+      },
+      {
+        "task": "Lock account after 5 failed attempts",
+        "description": "Lock user account after 5 consecutive failed logins, with configurable lock duration. Support unlocking via password reset or admin intervention.",
+        "labels": ["auth", "security"]
+      },
+      {
+        "task": "JWT generation via Keycloak",
+        "description": "On successful login, request JWT token from the Keycloak server for the user, ensuring inclusion of user role/claim data, and provide this to the frontend/API consumer.",
+        "labels": ["auth", "security", "keycloak"]
+      },
+      {
+        "task": "Logout endpoint",
+        "description": "Create endpoint to support explicit logout (optional for JWT, essential for session-based auth). Support JWT blacklisting if required for session revocation.",
+        "labels": ["auth", "logout"]
+      },
+      {
+        "task": "Password reset (via token/email)",
+        "description": "Allow users to request a password reset. Generate a single-use, time-limited token and send it via email (delegated to Notification Service). Endpoint for token verification and password update.",
+        "labels": ["auth", "security", "reset"]
+      },
+      {
+        "task": "Change password",
+        "description": "Authenticated users can update their password. Require current password for verification, enforce password policy, and audit all changes.",
+        "labels": ["auth", "security"]
+      }
+    ]
+  },
+  {
+    "service": "Address Service",
+    "issues": [
+      {
+        "task": "Add permanent address",
+        "description": "REST endpoint to collect and validate the user's permanent address (including fields e.g. street, city, state, zip/pincode, country). Persist address details in user profile.",
+        "labels": ["address", "registration"]
+      },
+      {
+        "task": "Add communication address",
+        "description": "Optionally allow an additional address, distinct from permanent, for correspondence. Flag as communication-preferred if both are present.",
+        "labels": ["address", "registration"]
+      },
+      {
+        "task": "Verify pincode format",
+        "description": "Backend check for postal code/pincode: verify length, numeric/alphanumeric format, and optionally check against a whitelist of known pincodes if required.",
+        "labels": ["address", "validation"]
+      },
+      {
+        "task": "Save addresses against user ID",
+        "description": "Implement DB mapping of (address_id, user_id). Ensure all address data for a user is retrievable via their profile.",
+        "labels": ["address", "registration"]
+      },
+      {
+        "task": "Complete registration flow",
+        "description": "When address details are fully submitted, emit an event (UserFullyRegistered) on the message bus (Kafka), including user ID and state for downstream consumers (account provisioning, notification).",
+        "labels": ["address", "event"]
+      }
+    ]
+  },
+  {
+    "service": "Notification Service",
+    "issues": [
+      {
+        "task": "Consume UserRegistered event",
+        "description": "Set up Kafka consumer to listen for the UserRegistered event. On event, begin notification flow including welcome mail/OTP delivery as appropriate.",
+        "labels": ["notification", "kafka"]
+      },
+      {
+        "task": "Send welcome email",
+        "description": "Upon registration event, generate and send a welcome email using a templated system. Mention onboarding steps and support info in this email.",
+        "labels": ["notification", "email"]
+      },
+      {
+        "task": "Send phone/email verification OTP",
+        "description": "When triggered, generate an OTP and deliver via SMS or email gateways. Ensure OTP token is stored with expiration and retry metadata.",
+        "labels": ["notification", "otp"]
+      },
+      {
+        "task": "Send password reset link/token",
+        "description": "Send secure password reset link/token via email (or SMS) as an event response. Log delivery success/failure for audit.",
+        "labels": ["notification", "security"]
+      },
+      {
+        "task": "Retry failed sends",
+        "description": "Automatically retry failed notifications using a dead-letter queue (DLQ) pattern and configurable retry policy for robustness.",
+        "labels": ["notification", "retry", "kafka"]
+      },
+      {
+        "task": "Audit notifications sent",
+        "description": "Log details of all notifications sent/attempted (recipient, template, success/failure, timestamp) for diagnosis and compliance.",
+        "labels": ["notification", "audit"]
+      }
+    ]
+  },
+  {
+    "service": "Account Service",
+    "issues": [
+      {
+        "task": "Open default savings account",
+        "description": "After user registration, create a default account and persist the account and user linkage. Use unique account number generation strategy.",
+        "labels": ["account"]
+      },
+      {
+        "task": "Link account to user ID",
+        "description": "Maintain reference in DB from account to user (e.g., user_id field). Support one-to-many relation for future extension (multiple accounts per user).",
+        "labels": ["account", "database"]
+      },
+      {
+        "task": "Generate account number",
+        "description": "Implement deterministic or random account number strategy—unique, not guessable, and conforms to business format. Avoid collision and support checks.",
+        "labels": ["account"]
+      },
+      {
+        "task": "View accounts for a user",
+        "description": "REST endpoint to fetch all accounts linked to the requesting user. Pagination support for future scalability.",
+        "labels": ["account", "api"]
+      },
+      {
+        "task": "Close account",
+        "description": "Soft-delete support for closing account: don’t wipe records, just flag as closed and prevent new transactions.",
+        "labels": ["account"]
+      },
+      {
+        "task": "Emit AccountCreated event",
+        "description": "After account creation, publish AccountCreated event via Kafka for downstream analytics, notification, and monitoring.",
+        "labels": ["account", "event"]
+      }
+    ]
+  },
+  {
+    "service": "Transaction Service",
+    "issues": [
+      {
+        "task": "Transfer money between accounts",
+        "description": "Create an endpoint or event-based handler for transferring funds between two accounts, enforcing business rules (e.g., sufficient funds, limits). Ensure atomicity and consistency.",
+        "labels": ["transaction", "api"]
+      },
+      {
+        "task": "View transaction history",
+        "description": "Paginated API for a user to view all their transactions (debits/credits), filter by date/type, and sorted by timestamp.",
+        "labels": ["transaction", "api"]
+      },
+      {
+        "task": "Emit TransactionInitiated",
+        "description": "When a transaction starts, emit a TransactionInitiated event with transaction ID, source/target, and meta to notify other services or trigger workflows.",
+        "labels": ["transaction", "event"]
+      },
+      {
+        "task": "Emit TransactionSuccessful / Failed",
+        "description": "Upon transaction completion, emit an event indicating result—success or failure—so analytics/audit/fraud subsystems can react accordingly.",
+        "labels": ["transaction", "event"]
+      },
+      {
+        "task": "Check account balance before debit",
+        "description": "On transfer, validate available account balance before approval. Reject or queue for review if insufficient funds; communicate errors clearly.",
+        "labels": ["transaction", "validation"]
+      },
+      {
+        "task": "Persist transaction logs",
+        "description": "All transactions (success/fail) to be logged with full metadata (amount, type, time, participant IDs, outcome) for troubleshooting and compliance.",
+        "labels": ["transaction", "database"]
+      },
+      {
+        "task": "Fraud detection (basic rules)",
+        "description": "Implement basic fraud detection—large sums, unusual frequency, blacklisted recipients. Emit suspicious activity events for downstream process if matched.",
+        "labels": ["transaction", "fraud", "event"]
+      }
+    ]
+  },
+  {
+    "service": "Document/KYC Service",
+    "issues": [
+      {
+        "task": "Upload PAN/Aadhar, etc.",
+        "description": "Provide an API and secure file storage for user KYC (e.g., PAN, Aadhar) uploads. Support format/size checks, virus scanning, and encrypted storage if required.",
+        "labels": ["kyc", "upload"]
+      },
+      {
+        "task": "Link documents to user",
+        "description": "After upload, persist linkage between file and user record in DB, e.g., document_id to user_id mapping, allowing easy retrieval and audit.",
+        "labels": ["kyc", "database"]
+      },
+      {
+        "task": "Status: uploaded, verified, rejected",
+        "description": "Track KYC doc status via an enum—'uploaded', 'verified', 'rejected'. Enable status transitions by admins and notify user accordingly.",
+        "labels": ["kyc", "status"]
+      },
+      {
+        "task": "Emit KYCCompleted event",
+        "description": "When all required KYC docs are verified for a user, emit a KYCCompleted event for downstream onboarding and compliance notification.",
+        "labels": ["kyc", "event"]
+      },
+      {
+        "task": "Store metadata (type, date, user)",
+        "description": "For each uploaded doc, store metadata (document type, uploaded_at, verified_by, related user) for traceability and audit.",
+        "labels": ["kyc", "metadata"]
+      },
+      {
+        "task": "Soft-delete document records",
+        "description": "Support soft-delete mechanism to flag docs as deleted without actual data wipe (for GDPR). Exclude soft-deleted docs from user-visible queries.",
+        "labels": ["kyc", "compliance"]
+      }
+    ]
+  },
+  {
+    "service": "Analytics/Aggregator Service",
+    "issues": [
+      {
+        "task": "Daily registration count",
+        "description": "Aggregate and report number of registrations on a daily basis. Use MongoDB aggregation pipelines or other analytics backend for performance.",
+        "labels": ["analytics"]
+      },
+      {
+        "task": "Failed login trends",
+        "description": "Aggregate failed login attempts and visualize trends grouped by user or IP, helping in security monitoring and brute-force attack diagnostics.",
+        "labels": ["analytics"]
+      },
+      {
+        "task": "Account growth by week",
+        "description": "Provide weekly aggregation of new accounts via AccountCreated events. Expose data via dashboards or reports.",
+        "labels": ["analytics", "event"]
+      },
+      {
+        "task": "Export reports",
+        "description": "Support REST endpoints to export aggregated data (as CSV/JSON) for external analysis, admin audits, or archival.",
+        "labels": ["analytics", "api"]
+      },
+      {
+        "task": "MongoDB views for fast querying",
+        "description": "Set up pre-aggregated MongoDB views or materialized collections for common queries, improving performance for dashboards and reporting APIs.",
+        "labels": ["analytics", "database"]
+      }
+    ]
+  },
+  {
+    "service": "Audit Service",
+    "issues": [
+      {
+        "task": "Subscribe to all domain events",
+        "description": "Kafka consumer with wildcard topics—receive all key domain events across all services for continuous, centralized auditing.",
+        "labels": ["audit", "kafka"]
+      },
+      {
+        "task": "Log login attempts",
+        "description": "Persist logs of each user login attempt (success/failure, timestamp, user, device/browser) in write-once storage to support audits and security investigations.",
+        "labels": ["audit", "security"]
+      },
+      {
+        "task": "Log password changes",
+        "description": "Write audit records for every user password change—including who performed, when, and from which device—for audit trails and compliance.",
+        "labels": ["audit", "security"]
+      },
+      {
+        "task": "Store as immutable records",
+        "description": "Write audit logs into a write-only, append-only storage (WORM DB or S3 with retention policy), ensuring records can’t be tampered post-write.",
+        "labels": ["audit", "database", "security"]
+      },
+      {
+        "task": "Build REST API for viewing logs",
+        "description": "APIs to fetch audit records. Support advanced filtering (user, action, date range), pagination, and export capabilities, with RBAC for access.",
+        "labels": ["audit", "api"]
+      },
+      {
+        "task": "Add TTL/indexing on old records",
+        "description": "Set DB-level TTL or archival-indexing to drop or move audit data past retention window—supports performance and compliance.",
+        "labels": ["audit", "database"]
+      }
+    ]
+  },
+  {
+    "service": "Admin Service",
+    "issues": [
+      {
+        "task": "List all users",
+        "description": "Admin API to list all users registered in the system, supporting filtering, searching, and pagination for large datasets.",
+        "labels": ["admin", "api"]
+      },
+      {
+        "task": "Block/unblock users",
+        "description": "Allow admins to block or unblock a user account—enforced across all services at authentication/authorization. Audit all such actions.",
+        "labels": ["admin", "user-management"]
+      },
+      {
+        "task": "Update roles",
+        "description": "Admin feature to update roles for any user using RBAC policies managed in Keycloak, with validation and audit trail.",
+        "labels": ["admin", "keycloak"]
+      },
+      {
+        "task": "View audit logs",
+        "description": "Allow admins to view logs (from Audit Service) for compliance and incident review, with strong filters and download/export options.",
+        "labels": ["admin", "audit"]
+      },
+      {
+        "task": "Trigger user notifications",
+        "description": "Tool for admins to send manual notification/emails to users (example: system alert, regulatory notice), via event trigger into Notification Service.",
+        "labels": ["admin", "notification"]
+      },
+      {
+        "task": "View system-wide stats",
+        "description": "Admin dashboard endpoint offering high-level stats: total users, active accounts, login failures, fraud hits, etc.; useful for leadership and support.",
+        "labels": ["admin", "analytics"]
+      }
+    ]
+  },
+  {
+    "service": "Security (Keycloak)",
+    "issues": [
+      {
+        "task": "Setup Realm",
+        "description": "Create and configure a new Keycloak realm to represent the microservice system. Add default roles such as user, admin, auditor, developer, etc.",
+        "labels": ["security", "keycloak"]
+      },
+      {
+        "task": "Create client for Gateway",
+        "description": "Register a Keycloak client for the API gateway. Define scopes/redirect URIs and configure as public client if needed, for frontend auth flows.",
+        "labels": ["security", "keycloak"]
+      },
+      {
+        "task": "Token lifespan configuration",
+        "description": "Set up JWT token and refresh token TTL (time to live) consistent with security and UX requirements. Document and propagate configs.",
+        "labels": ["security", "keycloak"]
+      },
+      {
+        "task": "Map roles to APIs",
+        "description": "Define role mappings in Keycloak and synchronize with API gateway for fine-grained access control on service endpoints.",
+        "labels": ["security", "keycloak"]
+      },
+      {
+        "task": "Add users via backend or console",
+        "description": "Provide workflows or console scripts for admin to add new users (especially system/admin users) directly to Keycloak and sync to main DB.",
+        "labels": ["security", "keycloak"]
+      }
+    ]
+  },
+  {
+    "service": "Cross-Cutting Tasks",
+    "issues": [
+      {
+        "task": "Base exception handling",
+        "description": "Implement global error/exception handling framework, returning structured errors (error code, message) for frontend or client clarity. Instrument error logging.",
+        "labels": ["cross-cutting", "exception"]
+      },
+      {
+        "task": "Request validation",
+        "description": "Apply validation middleware or decorators in all APIs to guarantee param/body validation before hitting business logic. Return all violations in a single response for better UX.",
+        "labels": ["cross-cutting", "validation"]
+      },
+      {
+        "task": "Swagger/OpenAPI docs",
+        "description": "Automatically generate, host, and maintain Swagger/OpenAPI docs for each service, enabling devs and integrators to test endpoints and review contracts.",
+        "labels": ["cross-cutting", "documentation"]
+      },
+      {
+        "task": "Global logging setup",
+        "description": "Configure a consistent logging framework with proper log levels, structure (JSON if needed), correlation IDs, and bulk log export support for centralized monitoring.",
+        "labels": ["cross-cutting", "logging"]
+      },
+      {
+        "task": "Kafka base config",
+        "description": "Standardize Kafka producer/consumer configuration across all event-driven services. Extract to a common module to avoid boilerplate and errors.",
+        "labels": ["cross-cutting", "kafka"]
+      },
+      {
+        "task": "MongoDB base repo",
+        "description": "Abstract MongoDB repositories or DAOs into a shared module, supporting common CRUD operations, pagination, and audit fields across all services.",
+        "labels": ["cross-cutting", "database"]
+      },
+      {
+        "task": "Common entity annotations",
+        "description": "Define and reuse entity/model annotations (e.g., createdAt, updatedAt, softDelete, validation decorators) for all microservice domain models.",
+        "labels": ["cross-cutting"]
+      },
+      {
+        "task": "Correlation ID in logs",
+        "description": "Add a correlation ID header to all incoming requests and propagate through all logs and downstream events/messages. Enables end-to-end traceability.",
+        "labels": ["cross-cutting", "logging"]
+      },
+      {
+        "task": "GitHub Actions CI/CD",
+        "description": "Set up reusable GitHub Actions workflows for linting, building, testing, deploying (optional), and security scanning all codebases/services on PR/merge.",
+        "labels": ["cross-cutting", "ci/cd"]
+      }
+    ]
+  }
+]
