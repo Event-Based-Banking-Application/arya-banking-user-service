@@ -6,4 +6,7 @@
             <password>${env.GH_PAT}</password>
         </server>
     </servers>
+    <pluginGroups>
+        <pluginGroup>com.github.spotbugs</pluginGroup>
+    </pluginGroups>
 </settings>
