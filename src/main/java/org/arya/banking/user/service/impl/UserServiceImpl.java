@@ -44,6 +44,11 @@ public class UserServiceImpl implements UserService {
         return new UserResponse(user.getUserId(), "User Registered Successfully", "AO1");
     }
 
+    @Override
+    public User getUserById(String userId) {
+        return userRepository.findByUserId(userId).orElseThrow(() -> new UserAlreadyExistsException(CONFLICT_ERROR_CODE, "User not present", ""));
+    }
+
     private String generateUserId(String firstName, String lastName) {
 
         return "ARYA"+DigestUtils.sha256Hex(firstName+lastName+System.currentTimeMillis()).substring(0, 6);

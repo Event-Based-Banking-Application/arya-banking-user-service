@@ -1,16 +1,14 @@
 package org.arya.banking.user.controller;
 
+import org.arya.banking.common.model.User;
 import org.arya.banking.user.dto.UserDto;
 import org.arya.banking.user.dto.UserResponse;
 import org.arya.banking.user.service.UserService;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
@@ -22,8 +20,12 @@ public class UserController {
 
     @PostMapping("/")
     public ResponseEntity<UserResponse> registerUserEntity(@RequestBody UserDto userDto) {
-        
         return ResponseEntity.ok().body(userService.register(userDto));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<User> getUserById(@PathVariable String userId) {
+        return ResponseEntity.ok().body(userService.getUserById(userId));
     }
 
 }
