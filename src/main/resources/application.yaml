@@ -11,7 +11,15 @@ spring:
     properties:
       schema.registry.url: http://localhost:8081
 
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
 app:
   metadata:
     versioning:
       enabled: true
+
+server:
+  port: 8086
