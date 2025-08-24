@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: arya-banking-user-service
+
+  data:
+    mongodb:
+      uri: mongodb+srv://admin:ka3k912719@bankingcluster.ayhvgpk.mongodb.net/metadata?retryWrites=true&w=majority&appName=bankingCluster
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    properties:
+      schema.registry.url: http://localhost:8081
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+app:
+  metadata:
+    versioning:
+      enabled: true
+
+server:
+  port: 8086

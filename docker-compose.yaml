@@ -1,21 +1,32 @@
-version: '3'
+version: '3.8'
+
+networks:
+  banking-network-kafka:
+    driver: bridge
+    name: banking-network-kafka  # Explicit name for isolation
 
 services:
   kafka:
     image: ghcr.io/event-based-banking-application/arya-banking-kafka:latest
+    container_name: kafka-banking
     ports:
       - "9092:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    networks:
+      - banking-network-kafka
 
   schema-registry:
     image: ghcr.io/event-based-banking-application/arya-banking-schema-registry:latest
+    container_name: schema-registry-banking
     depends_on:
       - kafka
     ports:
       - "8081:8081"
     volumes:
       - schema-data:/var/lib/schema-registry/data
+    networks:
+      - banking-network-kafka
 
 volumes:
   kafka-data:
