@@ -1,5 +1,6 @@
 package org.arya.banking.user.controller;
 
+import jakarta.validation.Valid;
 import org.arya.banking.common.model.User;
 import org.arya.banking.user.dto.UserDto;
 import org.arya.banking.user.dto.UserResponse;
@@ -19,7 +20,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> registerUserEntity(@RequestBody UserDto userDto) {
+    public ResponseEntity<UserResponse> registerUserEntity(@Valid @RequestBody UserDto userDto) {
         return ResponseEntity.ok().body(userService.register(userDto));
     }
 
