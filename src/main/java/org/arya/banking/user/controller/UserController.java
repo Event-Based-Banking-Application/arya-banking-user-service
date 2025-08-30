@@ -2,7 +2,7 @@ package org.arya.banking.user.controller;
 
 import jakarta.validation.Valid;
 import org.arya.banking.common.model.User;
-import org.arya.banking.user.dto.UserDto;
+import org.arya.banking.user.dto.RegisterDto;
 import org.arya.banking.user.dto.UserResponse;
 import org.arya.banking.user.service.UserService;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +20,8 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> registerUserEntity(@Valid @RequestBody UserDto userDto) {
-        return ResponseEntity.ok().body(userService.register(userDto));
+    public ResponseEntity<UserResponse> registerUserEntity(@Valid @RequestBody RegisterDto registerDto) {
+        return ResponseEntity.ok().body(userService.register(registerDto));
     }
 
     @GetMapping("/{userId}")
