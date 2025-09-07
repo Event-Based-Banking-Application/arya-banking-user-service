@@ -4,18 +4,18 @@ import java.util.List;
 
 import org.arya.banking.common.mapper.BaseMapper;
 import org.arya.banking.common.model.User;
-import org.arya.banking.user.dto.UserDto;
+import org.arya.banking.user.dto.RegisterDto;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
-public interface UserMapper extends BaseMapper<User, UserDto> {
+public interface UserMapper extends BaseMapper<User, RegisterDto> {
 
-    User toEntity(UserDto userDto);
+    User toEntity(RegisterDto registerDto);
 
-    UserDto toDto(User user);
+    RegisterDto toDto(User user);
 
-    List<User> toEntityList(List<UserDto> userDtos);
+    List<User> toEntityList(List<RegisterDto> registerDtos);
     
-    List<UserDto> toDtoList(List<User> users);
+    List<RegisterDto> toDtoList(List<User> users);
     
 }
