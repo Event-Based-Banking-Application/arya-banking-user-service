@@ -3,6 +3,20 @@ spring:
     name: arya-banking-user-service
     database: user-service
 
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            token-uri: ${app.config.keycloak.url}/realms/${app.config.keycloak.realm}/protocol/openid-connect/token
+        registration:
+          user-service-client:
+            provider: keycloak
+            client-id: user-service-client
+            client-secret: RVqFxq8TngYPsJHy4pNZFUAlPMZXCa16
+            authorization-grant-type: client_credentials
+
+
   data:
     mongodb:
       uri: mongodb+srv://admin:ka3k912719@bankingcluster.ayhvgpk.mongodb.net/${spring.application.database}?retryWrites=true&w=majority&appName=bankingCluster
@@ -21,6 +35,12 @@ app:
   metadata:
     versioning:
       enabled: true
+  config:
+    keycloak:
+      url: http://localhost:5433
+      realm: event-based-banking-service
+  security:
+    client-registrationId: user-service-client
 
 server:
   port: 8086

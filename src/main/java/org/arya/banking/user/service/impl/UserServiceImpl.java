@@ -2,7 +2,6 @@ package org.arya.banking.user.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.arya.banking.common.config.MongoConfig;
 import org.arya.banking.common.dto.KeyCloakResponse;
 import org.arya.banking.common.exception.UserAlreadyExistsException;
 import org.arya.banking.common.model.*;
@@ -15,7 +14,6 @@ import org.arya.banking.user.repository.SecurityDetailsRepository;
 import org.arya.banking.user.repository.UserRepository;
 import org.arya.banking.user.service.UserService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,7 +58,6 @@ public class UserServiceImpl implements UserService {
                 .emailId(user.getEmailId())
                 .password(registerDto.password()).build();
 
-        log.info("Processing key cloak user: {}", keyCloakUser);
         ResponseEntity<KeyCloakResponse> response = keyCloakService.createKeyCloakUser(keyCloakUser);
 
         log.debug("Response from keycloak: {}", response);
