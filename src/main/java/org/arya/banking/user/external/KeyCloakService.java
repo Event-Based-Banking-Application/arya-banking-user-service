@@ -11,6 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "ARYA-BANKING-AUTH-SERVICE", configuration = FeignConfiguration.class)
 public interface KeyCloakService {
 
-    @PostMapping("/api/auth/register/users")
+    @PostMapping("/internal/api/auth/register/users")
     ResponseEntity<KeyCloakResponse> createKeyCloakUser(@RequestBody KeyCloakUser keyCloakUser);
 }
