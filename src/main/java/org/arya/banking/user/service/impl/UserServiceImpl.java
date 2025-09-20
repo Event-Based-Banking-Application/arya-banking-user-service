@@ -2,9 +2,11 @@ package org.arya.banking.user.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.arya.banking.common.avro.UserCreateEvent;
 import org.arya.banking.common.dto.KeyCloakResponse;
 import org.arya.banking.common.exception.UserAlreadyExistsException;
 import org.arya.banking.common.model.*;
+import org.arya.banking.user.config.kafka.UserCreateProducer;
 import org.arya.banking.user.dto.RegisterDto;
 import org.arya.banking.user.dto.UserResponse;
 import org.arya.banking.user.external.KeyCloakService;
@@ -36,6 +38,7 @@ public class UserServiceImpl implements UserService {
     private final SecurityDetailsRepository securityDetailsRepository;
     private final UserMapper userMapper;
     private final KeyCloakService keyCloakService;
+    private final UserCreateProducer userCreateProducer;
 
     @Override
     public UserResponse register(RegisterDto registerDto) {
@@ -74,7 +77,9 @@ public class UserServiceImpl implements UserService {
                 .isEmailVerified(false)
                 .twoFactorEnabled(false)
                 .loginFailedAttempts(0).build());
-        
+
+        userCreateProducer.sendUserCreateEvent(UserCreateEvent.newBuilder()
+                .setUserId(user.getUserId()).setStatus(user.getStatus()).build());
         return new UserResponse(user.getUserId(), "User Registered Successfully", USER_CREATED_CODE);
     }
 

@@ -1,5 +1,6 @@
 spring:
   application:
+    topic: user-create-event
     name: arya-banking-user-service
     database: user-service
 
