@@ -1,32 +1,54 @@
 package org.arya.banking.user.service.impl;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.avro.UserCreateEvent;
+import org.arya.banking.common.constants.RegistrationConstants;
 import org.arya.banking.common.dto.KeyCloakResponse;
 import org.arya.banking.common.exception.UserAlreadyExistsException;
+import org.arya.banking.common.exception.UserNotFoundException;
 import org.arya.banking.common.model.*;
 import org.arya.banking.user.config.kafka.UserCreateProducer;
 import org.arya.banking.user.dto.RegisterDto;
+import org.arya.banking.user.dto.UpdateAddressDto;
+import org.arya.banking.user.dto.UpdateContactDto;
 import org.arya.banking.user.dto.UserResponse;
+import org.arya.banking.user.dto.UserUpdateDto;
 import org.arya.banking.user.external.KeyCloakService;
 import org.arya.banking.user.mapper.UserMapper;
 import org.arya.banking.user.repository.RegistrationProgressRepository;
 import org.arya.banking.user.repository.SecurityDetailsRepository;
 import org.arya.banking.user.repository.UserRepository;
 import org.arya.banking.user.service.UserService;
+import org.arya.banking.user.util.UserValidator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import static org.arya.banking.common.ResponseCodes.USER_CREATED_CODE;
+import static org.arya.banking.common.constants.RegistrationConstants.ADD_ADDRESS;
 import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
+import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
+import static org.arya.banking.common.constants.ResponseCodes.USER_CREATED_CODE;
+import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_CODE;
 import static org.arya.banking.common.exception.ExceptionCode.USER_EXISTS_CODE;
+import static org.arya.banking.common.exception.ExceptionCode.USER_NOT_EXISTS_CODE;
 import static org.arya.banking.common.exception.ExceptionConstants.CONFLICT_ERROR_CODE;
+import static org.arya.banking.common.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
 import static org.arya.banking.common.utils.CommonUtils.generateSHA256hash;
 
+/**
+ * Implementation of the UserService interface for managing user operations.
+ * <p>
+ * This service provides methods for user registration, updating user details, retrieving user information,
+ * and handling registration progress and security details. It interacts with repositories, external services,
+ * and event producers to manage user lifecycle and registration events.
+ * </p>
+ */
 @Slf4j
 @Service
 @Transactional
@@ -39,7 +61,18 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final KeyCloakService keyCloakService;
     private final UserCreateProducer userCreateProducer;
+    private final UserValidator userValidator;
 
+    /**
+     * Registers a new user in the system.
+     * <p>
+     * Validates if the user already exists, creates a new user entity, saves it, creates a KeyCloak user,
+     * initializes registration progress and security details, and sends a user creation event.
+     * </p>
+     * @param registerDto DTO containing user registration details
+     * @return UserResponse containing the user ID and registration status
+     * @throws UserAlreadyExistsException if a user with the same email or contact number already exists
+     */
     @Override
     public UserResponse register(RegisterDto registerDto) {
         
@@ -64,30 +97,39 @@ public class UserServiceImpl implements UserService {
         ResponseEntity<KeyCloakResponse> response = keyCloakService.createKeyCloakUser(keyCloakUser);
 
         log.debug("Response from keycloak: {}", response);
-        registrationProgressRepository.save(RegistrationProgress.builder()
-                .userId(user.getUserId())
-                .status(BASIC_DETAILS_ADDED.getStatus())
-                .subStatus(BASIC_DETAILS_ADDED.getSubStatus())
-                .lastStepCompleted(BASIC_DETAILS_ADDED.getLastStepCompleted())
-                .nextStep(BASIC_DETAILS_ADDED.getNextStep()).build());
+        registrationProgressRepository.save(userValidator.generateRegistrationProgress(user.getUserId(), BASIC_DETAILS_ADDED));
 
-        securityDetailsRepository.save(SecurityDetails.builder()
+        SecurityDetails securityDetails = SecurityDetails.builder()
                 .userId(user.getUserId())
                 .isContactNumberVerified(false)
                 .isEmailVerified(false)
                 .twoFactorEnabled(false)
-                .loginFailedAttempts(0).build());
+                .loginFailedAttempts(0).build();
+        securityDetailsRepository.save(securityDetails);
 
-        userCreateProducer.sendUserCreateEvent(UserCreateEvent.newBuilder()
-                .setUserId(user.getUserId()).setStatus(user.getStatus()).build());
+        userCreateProducer.sendUserCreateEvent(userValidator.getUserCreateEvent(user.getUserId(), false, false, BASIC_DETAILS_ADDED.getSubStatus()));
         return new UserResponse(user.getUserId(), "User Registered Successfully", USER_CREATED_CODE);
     }
 
+    /**
+     * Retrieves a user by their unique user ID.
+     *
+     * @param userId the unique identifier of the user
+     * @return the User entity
+     * @throws UserNotFoundException if the user is not found
+     */
     @Override
     public User getUserById(String userId) {
-        return userRepository.findByUserId(userId).orElseThrow(() -> new UserAlreadyExistsException(CONFLICT_ERROR_CODE, "User not present", ""));
+        return userRepository.findByUserId(userId).orElseThrow(() -> new UserNotFoundException(NOT_FOUND_ERROR_CODE, USER_NOT_EXISTS_CODE, "User not present"));
     }
 
+    /**
+     * Generates a unique user ID based on first name, last name, and current timestamp.
+     *
+     * @param firstName the user's first name
+     * @param lastName the user's last name
+     * @return a unique user ID string
+     */
     private String generateUserId(String firstName, String lastName) {
 
         StringBuilder valueToHash = new StringBuilder(firstName);
@@ -95,5 +137,102 @@ public class UserServiceImpl implements UserService {
         return "ARYA"+generateSHA256hash(valueToHash.toString()).substring(0, 6).toUpperCase();
     }
 
+    /**
+     * Updates user details such as contact number and address.
+     * <p>
+     * Validates and updates contact and address information, updates registration step, and saves the user.
+     * </p>
+     * @param userId the unique identifier of the user
+     * @param userUpdateDto DTO containing updated user details
+     * @return UserResponse containing the user ID and update status
+     */
+    @Override
+    public UserResponse updateUser(String userId, UserUpdateDto userUpdateDto) {
+
+        User user = getUserById(userId);
+        if (null != userUpdateDto.updateContactDto()) {
+            updateContactNumber(user, userUpdateDto.updateContactDto());
+        }
+        if (null != userUpdateDto.updateAddressDto()) {
+            updateAddress(user, userUpdateDto.updateAddressDto());
+        }
+        userValidator.validateAndInvokeUpdateRegistrationStep(user, false, null);
+        userRepository.save(user);
+        return new UserResponse(user.getUserId(), "User updated successfully", USER_UPDATED_CODE);
+    }
+
+    /**
+     * Updates the address of a user.
+     * <p>
+     * Removes any existing address of the same type and adds the new address.
+     * </p>
+     * @param user the User entity to update
+     * @param updateAddressDto DTO containing the new address information
+     */
+    private void updateAddress(User user, @Valid UpdateAddressDto updateAddressDto) {
+
+        if(null == user.getAddresss()) {
+            user.setAddresss(new ArrayList<>());
+        }
+        user.getAddresss().removeIf(address -> address.getAddressType().equals(updateAddressDto.address().getAddressType()));
+        user.getAddresss().add(updateAddressDto.address());
+    }
+
+    /**
+     * Updates the contact number of a user.
+     * <p>
+     * Handles primary and other contact numbers, updating types and verification status as needed.
+     * </p>
+     * @param user the User entity to update
+     * @param updateContactDto DTO containing the new contact information
+     */
+    private void updateContactNumber(User user, @Valid UpdateContactDto updateContactDto) {
+
+        Optional<ContactNumber> contactNumber = getExistingContactNumber(user, updateContactDto.contactNumber());
+
+        if (updateContactDto.isPrimary()) {
+
+            user.getContactNumbers().stream().filter(contact -> contact.getType().equals(ContactNumberType.PRIMARY))
+                    .findFirst()
+                    .ifPresent(contact -> contact.setType(ContactNumberType.OTHERS));
+            user.setPrimaryContactNumber(updateContactDto.contactNumber());
+            if(contactNumber.isPresent() && !ContactNumberType.PRIMARY.equals(contactNumber.get().getType())) {
+                contactNumber.ifPresent(number  -> number.setType(ContactNumberType.PRIMARY));
+            } else {
+                addContactNumber(user, updateContactDto.contactNumber(), ContactNumberType.PRIMARY);
+            }
+        } else {
+            addContactNumber(user, updateContactDto.contactNumber(), ContactNumberType.OTHERS);
+        }
+    }
+
+    /**
+     * Retrieves an existing contact number from a user.
+     *
+     * @param user the User entity
+     * @param contactNumber the contact number to search for
+     * @return Optional containing the ContactNumber if found
+     */
+    private static Optional<ContactNumber> getExistingContactNumber(User user, String contactNumber) {
+        return user.getContactNumbers().stream()
+                .filter(contact -> contact.getContactNumber().equals(contactNumber))
+                .findFirst();
+    }
+
+    /**
+     * Adds a contact number to a user.
+     *
+     * @param user the User entity
+     * @param contactNumber the contact number to add
+     * @param primary the type of contact number (PRIMARY or OTHERS)
+     */
+    private static void addContactNumber(User user, String contactNumber, ContactNumberType primary) {
+        user.getContactNumbers().add(
+                ContactNumber.builder()
+                        .contactNumber(contactNumber)
+                        .isVerified(false)
+                        .type(primary).build()
+        );
+    }
     
 }

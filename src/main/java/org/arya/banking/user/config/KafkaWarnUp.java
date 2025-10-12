@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class KafkaWarnUp {
 
-    private final ProducerFactory<String, UserCreateEvent> producerFactory;
+    private final ProducerFactory<String, Object> producerFactory;
 
     @PostConstruct
     public void init() {
