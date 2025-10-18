@@ -1,7 +1,6 @@
 package org.arya.banking.user.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.exception.SecurityDetailsNotFoundException;
 import org.arya.banking.common.model.SecurityDetails;
 import org.arya.banking.common.model.SecurityQuestions;
@@ -31,7 +30,6 @@ import static org.arya.banking.common.utils.CommonUtils.isNotEmpty;
  * including handling security questions and answers.
  * </p>
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SecurityDetailsServiceImpl implements SecurityDetailsService {
@@ -62,8 +60,10 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
         final Map<String, SecurityQuestions> securityQuestionsMap = isNotEmpty(securityDetails.getSecurityQuestions())
                 ? CommonUtils.convertListIntoMap(securityDetails.getSecurityQuestions(), SecurityQuestions::getQuestion)
                 : new HashMap<>();
+
         updateSecurityDetailsDto.securityQuestions().forEach(question -> {
             SecurityQuestions details = securityQuestionsMap.get(question.getQuestion());
+
             if(null != details) {
                 details.setAnswer(question.getAnswer());
             } else {
