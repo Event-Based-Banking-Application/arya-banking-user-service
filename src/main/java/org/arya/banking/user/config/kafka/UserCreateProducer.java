@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UserCreateProducer {
 
-    private final KafkaTemplate<String, UserCreateEvent> userCreateEventTemplate;
+    private final KafkaTemplate<String, Object> userCreateEventTemplate;
 
     public void sendUserCreateEvent(UserCreateEvent userCreateEvent) {
         userCreateEventTemplate.send("user-create-event", userCreateEvent.getUserId().toString(), userCreateEvent);
