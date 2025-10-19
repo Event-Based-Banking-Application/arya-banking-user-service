@@ -15,8 +15,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_CODE;
 import static org.arya.banking.common.exception.ExceptionCode.SECURITY_DETAILS_NOT_EXISTS_CODE;
@@ -56,7 +58,7 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
         SecurityDetails securityDetails = securityDetailsRepository.findByUserId(userId).orElseThrow(
                 () -> new SecurityDetailsNotFoundException(NOT_FOUND_ERROR_CODE, SECURITY_DETAILS_NOT_EXISTS_CODE, "Security details not found"));
 
-        List<SecurityQuestions> securityQuestions = new ArrayList<>();
+        List<SecurityQuestions> securityQuestions = null != securityDetails.getSecurityQuestions() ? new ArrayList<>(securityDetails.getSecurityQuestions()) : new ArrayList<>();
         final Map<String, SecurityQuestions> securityQuestionsMap = isNotEmpty(securityDetails.getSecurityQuestions())
                 ? CommonUtils.convertListIntoMap(securityDetails.getSecurityQuestions(), SecurityQuestions::getQuestion)
                 : new HashMap<>();
@@ -65,6 +67,7 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
             SecurityQuestions details = securityQuestionsMap.get(question.getQuestion());
 
             if(null != details) {
+                securityQuestions.remove(details);
                 details.setAnswer(question.getAnswer());
             } else {
                 details = SecurityQuestions.builder()
@@ -73,7 +76,7 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
             }
             securityQuestions.add(details);
         });
-        securityDetails.getSecurityQuestions().addAll(securityQuestions);
+        securityDetails.setSecurityQuestions(securityQuestions);
         securityDetailsRepository.save(securityDetails);
         userValidator.validateAndInvokeUpdateRegistrationStep(userService.getUserById(userId), true, securityDetails);
         return new UserResponse(userId, "User updated successfully", USER_UPDATED_CODE);
