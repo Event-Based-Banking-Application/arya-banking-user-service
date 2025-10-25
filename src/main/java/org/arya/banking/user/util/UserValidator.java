@@ -100,7 +100,11 @@ public class UserValidator {
             registrationProgressRepository.save(progress);
             status = progress.getSubStatus();
         }
-        log.info("Send :{}, registration event", status);
+        sendUserEvent(status, userId);
+    }
+
+    public void sendUserEvent(String status, String userId) {
+        log.info("Send :{}, user event", status);
         userCreateProducer.sendUserCreateEvent(getUserCreateEvent(userId, false, false, status));
     }
 

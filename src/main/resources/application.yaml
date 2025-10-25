@@ -16,6 +16,9 @@ spring:
             client-id: user-service-client
             client-secret: RVqFxq8TngYPsJHy4pNZFUAlPMZXCa16
             authorization-grant-type: client_credentials
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${app.config.keycloak.url}/realms/${app.config.keycloak.realm}/protocol/openid-connect/certs
 
 
   data:

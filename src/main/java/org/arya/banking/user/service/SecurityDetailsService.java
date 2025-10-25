@@ -1,9 +1,10 @@
 package org.arya.banking.user.service;
 
 import org.arya.banking.user.dto.UpdateSecurityDetailsDto;
-import org.arya.banking.user.dto.UserResponse;
+
+import java.util.Map;
 
 public interface SecurityDetailsService {
 
-    UserResponse updateSecurityCredentials(String userId, UpdateSecurityDetailsDto updateSecurityDetailsDto);
+    Map<String, String> updateSecurityCredentials(String userId, UpdateSecurityDetailsDto updateSecurityDetailsDto);
 }

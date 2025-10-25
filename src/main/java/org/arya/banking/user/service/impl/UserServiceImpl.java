@@ -3,9 +3,8 @@ package org.arya.banking.user.service.impl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.arya.banking.common.avro.UserCreateEvent;
-import org.arya.banking.common.constants.RegistrationConstants;
 import org.arya.banking.common.dto.KeyCloakResponse;
+import org.arya.banking.common.dto.UserResponse;
 import org.arya.banking.common.exception.UserAlreadyExistsException;
 import org.arya.banking.common.exception.UserNotFoundException;
 import org.arya.banking.common.model.*;
@@ -13,7 +12,6 @@ import org.arya.banking.user.config.kafka.UserCreateProducer;
 import org.arya.banking.user.dto.RegisterDto;
 import org.arya.banking.user.dto.UpdateAddressDto;
 import org.arya.banking.user.dto.UpdateContactDto;
-import org.arya.banking.user.dto.UserResponse;
 import org.arya.banking.user.dto.UserUpdateDto;
 import org.arya.banking.user.external.KeyCloakService;
 import org.arya.banking.user.mapper.UserMapper;
@@ -30,13 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.arya.banking.common.constants.RegistrationConstants.ADD_ADDRESS;
 import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
-import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
-import static org.arya.banking.common.constants.ResponseCodes.USER_CREATED_CODE;
-import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_CODE;
-import static org.arya.banking.common.exception.ExceptionCode.USER_EXISTS_CODE;
-import static org.arya.banking.common.exception.ExceptionCode.USER_NOT_EXISTS_CODE;
+import static org.arya.banking.common.constants.ResponseCodes.USER_CREATED_201;
+import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_200;
+import static org.arya.banking.common.exception.ExceptionCode.USER_ALREADY_EXISTS_409;
+import static org.arya.banking.common.exception.ExceptionCode.USER_NOT_FOUND_404;
 import static org.arya.banking.common.exception.ExceptionConstants.CONFLICT_ERROR_CODE;
 import static org.arya.banking.common.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
 import static org.arya.banking.common.utils.CommonUtils.generateSHA256hash;
@@ -77,7 +73,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse register(RegisterDto registerDto) {
         
         userRepository.findByEmailIdOrPrimaryContactNumber(registerDto.emailId(),
-                        registerDto.primaryContactNumber()).ifPresent(user -> { throw new UserAlreadyExistsException(CONFLICT_ERROR_CODE, USER_EXISTS_CODE, "User already exists"); });
+                        registerDto.primaryContactNumber()).ifPresent(user -> { throw new UserAlreadyExistsException(CONFLICT_ERROR_CODE, USER_ALREADY_EXISTS_409, "User already exists"); });
 
         User user = userMapper.toEntity(registerDto);
         user.setUserId(generateUserId(registerDto.firstName(), registerDto.lastName()));
@@ -87,7 +83,7 @@ public class UserServiceImpl implements UserService {
                 .isVerified(false).build()));
 
         user.setStatus(UserStatus.ACTIVE.name());
-        userRepository.save(user);
+        insertOrUpdateUser(user);
         KeyCloakUser keyCloakUser = KeyCloakUser.builder().username(user.getUserId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
@@ -108,7 +104,7 @@ public class UserServiceImpl implements UserService {
         securityDetailsRepository.save(securityDetails);
 
         userCreateProducer.sendUserCreateEvent(userValidator.getUserCreateEvent(user.getUserId(), false, false, BASIC_DETAILS_ADDED.getSubStatus()));
-        return new UserResponse(user.getUserId(), "User Registered Successfully", USER_CREATED_CODE);
+        return new UserResponse(user.getUserId(), "User Registered Successfully", USER_CREATED_201);
     }
 
     /**
@@ -120,7 +116,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User getUserById(String userId) {
-        return userRepository.findByUserId(userId).orElseThrow(() -> new UserNotFoundException(NOT_FOUND_ERROR_CODE, USER_NOT_EXISTS_CODE, "User not present"));
+        return userRepository.findByUserId(userId).orElseThrow(() -> new UserNotFoundException(NOT_FOUND_ERROR_CODE, USER_NOT_FOUND_404, "User not present"));
     }
 
     /**
@@ -150,15 +146,24 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(String userId, UserUpdateDto userUpdateDto) {
 
         User user = getUserById(userId);
-        if (null != userUpdateDto.updateContactDto()) {
-            updateContactNumber(user, userUpdateDto.updateContactDto());
+        if (!userUpdateDto.isLockUser()) {
+            if (null != userUpdateDto.updateContactDto()) {
+                updateContactNumber(user, userUpdateDto.updateContactDto());
+            }
+            if (null != userUpdateDto.updateAddressDto()) {
+                updateAddress(user, userUpdateDto.updateAddressDto());
+            }
+            userValidator.validateAndInvokeUpdateRegistrationStep(user, false, null);
+        } else {
+            user.setStatus(UserStatus.BLOCKED.name());
+            userValidator.sendUserEvent(user.getStatus(), userId);
         }
-        if (null != userUpdateDto.updateAddressDto()) {
-            updateAddress(user, userUpdateDto.updateAddressDto());
-        }
-        userValidator.validateAndInvokeUpdateRegistrationStep(user, false, null);
+        insertOrUpdateUser(user);
+        return new UserResponse(user.getUserId(), "User updated successfully", USER_UPDATED_200);
+    }
+
+    private void insertOrUpdateUser(User user) {
         userRepository.save(user);
-        return new UserResponse(user.getUserId(), "User updated successfully", USER_UPDATED_CODE);
     }
 
     /**

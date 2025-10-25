@@ -2,7 +2,6 @@ package org.arya.banking.user.config;
 
 import feign.RequestInterceptor;
 import lombok.RequiredArgsConstructor;
-import org.arya.banking.common.exception.ExceptionCode;
 import org.arya.banking.common.exception.InvalidOAuth2Client;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,6 +11,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 
+import static org.arya.banking.common.exception.ExceptionCode.AUTH_INVALID_OAUTH_TOKEN_400;
 import static org.arya.banking.common.utils.CommonUtils.isEmpty;
 
 @Configuration
@@ -34,7 +34,7 @@ public class OAuth2FeignConfig {
 
             OAuth2AuthorizedClient oAuth2AuthorizedClient = authorizedClientManager.authorize(oAuth2AuthorizeRequest);
             if(isEmpty(oAuth2AuthorizedClient)) {
-                throw new InvalidOAuth2Client(400, ExceptionCode.INVALID_OAUTH_CODE, String.format("Could not get oauth client from: %s", clientRegistrationId));
+                throw new InvalidOAuth2Client(400, AUTH_INVALID_OAUTH_TOKEN_400, String.format("Could not get oauth client from: %s", clientRegistrationId));
             }
             requestTemplate.header(HttpHeaders.AUTHORIZATION, BEARER_+oAuth2AuthorizedClient.getAccessToken().getTokenValue());
         };

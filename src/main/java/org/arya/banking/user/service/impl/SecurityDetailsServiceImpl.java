@@ -1,12 +1,13 @@
 package org.arya.banking.user.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.arya.banking.common.dto.UserResponse;
 import org.arya.banking.common.exception.SecurityDetailsNotFoundException;
 import org.arya.banking.common.model.SecurityDetails;
 import org.arya.banking.common.model.SecurityQuestions;
 import org.arya.banking.common.utils.CommonUtils;
 import org.arya.banking.user.dto.UpdateSecurityDetailsDto;
-import org.arya.banking.user.dto.UserResponse;
+import org.arya.banking.user.dto.UserUpdateDto;
 import org.arya.banking.user.repository.SecurityDetailsRepository;
 import org.arya.banking.user.service.SecurityDetailsService;
 import org.arya.banking.user.service.UserService;
@@ -15,13 +16,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_CODE;
-import static org.arya.banking.common.exception.ExceptionCode.SECURITY_DETAILS_NOT_EXISTS_CODE;
+import static org.arya.banking.common.constants.ResponseCodes.SECURITY_DETAILS_UPDATED_200;
+import static org.arya.banking.common.constants.ResponseKeys.*;
+import static org.arya.banking.common.exception.ExceptionCode.SECURITY_DETAILS_NOT_FOUND_404;
 import static org.arya.banking.common.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
 import static org.arya.banking.common.utils.CommonUtils.isNotEmpty;
 
@@ -53,11 +53,35 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
      * @throws SecurityDetailsNotFoundException if the user's security details are not found
      */
     @Override
-    public UserResponse updateSecurityCredentials(String userId, UpdateSecurityDetailsDto updateSecurityDetailsDto) {
+    public Map<String, String> updateSecurityCredentials(String userId, UpdateSecurityDetailsDto updateSecurityDetailsDto) {
 
-        SecurityDetails securityDetails = securityDetailsRepository.findByUserId(userId).orElseThrow(
-                () -> new SecurityDetailsNotFoundException(NOT_FOUND_ERROR_CODE, SECURITY_DETAILS_NOT_EXISTS_CODE, "Security details not found"));
+        SecurityDetails securityDetails = getSecurityDetails(userId);
+        Map<String, String> response = getResponseMap(userId);
+        response.put(RESPONSE_CODE, SECURITY_DETAILS_UPDATED_200);
 
+        if (isNotEmpty(updateSecurityDetailsDto.securityQuestions())) {
+            updateSecurityQuestions(updateSecurityDetailsDto, securityDetails);
+            userValidator.validateAndInvokeUpdateRegistrationStep(userService.getUserById(userId), true, securityDetails);
+            response.put(RESPONSE, "Security questions updated successfully");
+        } else if (updateSecurityDetailsDto.loginFailed()) {
+            securityDetails.setLoginFailedAttempts(securityDetails.getLoginFailedAttempts() + 1);
+            validateAndLockAccount(securityDetails, response);
+            response.put(DISABLE_USER, "true");
+        }
+        insertOrUpdateSecurityDetail(securityDetails);
+        return response;
+    }
+
+    private void validateAndLockAccount(SecurityDetails securityDetails, Map<String, String> response) {
+
+        if(securityDetails.getLoginFailedAttempts() >= 5) {
+            response.put("response", "User account locked due to multiple failed login attempts");
+            UserUpdateDto userUpdateDto = new UserUpdateDto(true, null, null);
+            userService.updateUser(securityDetails.getUserId(), userUpdateDto);
+        }
+    }
+
+    private void updateSecurityQuestions(UpdateSecurityDetailsDto updateSecurityDetailsDto, SecurityDetails securityDetails) {
         List<SecurityQuestions> securityQuestions = null != securityDetails.getSecurityQuestions() ? new ArrayList<>(securityDetails.getSecurityQuestions()) : new ArrayList<>();
         final Map<String, SecurityQuestions> securityQuestionsMap = isNotEmpty(securityDetails.getSecurityQuestions())
                 ? CommonUtils.convertListIntoMap(securityDetails.getSecurityQuestions(), SecurityQuestions::getQuestion)
@@ -77,8 +101,20 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
             securityQuestions.add(details);
         });
         securityDetails.setSecurityQuestions(securityQuestions);
+    }
+
+    private void insertOrUpdateSecurityDetail(SecurityDetails securityDetails) {
         securityDetailsRepository.save(securityDetails);
-        userValidator.validateAndInvokeUpdateRegistrationStep(userService.getUserById(userId), true, securityDetails);
-        return new UserResponse(userId, "User updated successfully", USER_UPDATED_CODE);
+    }
+
+    private SecurityDetails getSecurityDetails(String userId) {
+        return securityDetailsRepository.findByUserId(userId).orElseThrow(
+                () -> new SecurityDetailsNotFoundException(NOT_FOUND_ERROR_CODE, SECURITY_DETAILS_NOT_FOUND_404, "Security details not found"));
+    }
+
+    private Map<String, String> getResponseMap(String userId) {
+        Map<String, String> response = new HashMap<>();
+        response.put(USER_ID, userId);
+        return response;
     }
 }
