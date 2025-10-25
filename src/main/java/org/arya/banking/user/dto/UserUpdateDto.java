@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 
 public record UserUpdateDto(
 
+        boolean isLockUser,
+
         @Valid
         UpdateContactDto updateContactDto,
 

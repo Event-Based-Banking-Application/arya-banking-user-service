@@ -8,7 +8,9 @@ import java.util.List;
 public record UpdateSecurityDetailsDto(
 
         @Valid
-        List<SecurityQuestions> securityQuestions
+        List<SecurityQuestions> securityQuestions,
+
+        boolean loginFailed
 ) {
 
 

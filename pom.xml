@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.arya.banking</groupId>
             <artifactId>arya-banking-common</artifactId>
-            <version>1.1.6</version>
+            <version>1.1.7</version>
         </dependency>
 
         <dependency>
@@ -161,6 +161,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
     </dependencies>
