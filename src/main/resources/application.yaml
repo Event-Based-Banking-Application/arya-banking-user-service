@@ -4,6 +4,9 @@ spring:
     name: arya-banking-user-service
     database: user-service
 
+  config:
+    import: configserver:http://localhost:8090
+
   security:
     oauth2:
       client:
@@ -18,31 +21,12 @@ spring:
             authorization-grant-type: client_credentials
       resourceserver:
         jwt:
-          jwk-set-uri: ${app.config.keycloak.url}/realms/${app.config.keycloak.realm}/protocol/openid-connect/certs
-
-
-  data:
-    mongodb:
-      uri: mongodb+srv://admin:ka3k912719@bankingcluster.ayhvgpk.mongodb.net/${spring.application.database}?retryWrites=true&w=majority&appName=bankingCluster
-
-  kafka:
-    bootstrap-servers: localhost:9092
-    properties:
-      schema.registry.url: http://localhost:8081
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
+          jwk-set-uri: ${app.config.keycloak.jwk-set-uri}
 
 app:
   metadata:
     versioning:
       enabled: true
-  config:
-    keycloak:
-      url: http://localhost:5433
-      realm: event-based-banking-service
   security:
     client-registrationId: user-service-client
 

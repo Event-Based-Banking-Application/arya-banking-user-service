@@ -66,7 +66,6 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
         } else if (updateSecurityDetailsDto.loginFailed()) {
             securityDetails.setLoginFailedAttempts(securityDetails.getLoginFailedAttempts() + 1);
             validateAndLockAccount(securityDetails, response);
-            response.put(DISABLE_USER, "true");
         }
         insertOrUpdateSecurityDetail(securityDetails);
         return response;
@@ -75,6 +74,7 @@ public class SecurityDetailsServiceImpl implements SecurityDetailsService {
     private void validateAndLockAccount(SecurityDetails securityDetails, Map<String, String> response) {
 
         if(securityDetails.getLoginFailedAttempts() >= 5) {
+            response.put(DISABLE_USER, "true");
             response.put("response", "User account locked due to multiple failed login attempts");
             UserUpdateDto userUpdateDto = new UserUpdateDto(true, null, null);
             userService.updateUser(securityDetails.getUserId(), userUpdateDto);
