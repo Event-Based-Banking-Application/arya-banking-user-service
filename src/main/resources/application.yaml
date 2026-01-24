@@ -3,6 +3,10 @@ spring:
     topic: user-create-event
     name: arya-banking-user-service
     database: user-service
+    mongo-password: ${MONGO.PASSWORD}
+
+  config:
+    import: configserver:http://localhost:8090
 
   config:
     import: configserver:http://localhost:8090
@@ -17,7 +21,7 @@ spring:
           user-service-client:
             provider: keycloak
             client-id: user-service-client
-            client-secret: RVqFxq8TngYPsJHy4pNZFUAlPMZXCa16
+            client-secret: ${USER.SERVICE.CLIENT.SECRET}
             authorization-grant-type: client_credentials
       resourceserver:
         jwt:
