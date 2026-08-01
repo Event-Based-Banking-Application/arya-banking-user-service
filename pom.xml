@@ -43,7 +43,8 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <arya-banking-common-version>1.2.2</arya-banking-common-version>
+        <arya-banking-common-version>1.2.3</arya-banking-common-version>
+        <arya-banking-outbox-service-version>1.0.0</arya-banking-outbox-service-version>
         <sonar.coverage.exclusions>**/config/**,**/dto/**,**/constants/**,**/mapper/**,**/repository/**,**/model/**,**/metadat/**, **/exception/**,**/*Application.java</sonar.coverage.exclusions>
     </properties>
 
@@ -51,7 +52,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Event-Based-Banking-Application/arya-banking-common</url>
+            <url>https://maven.pkg.github.com/Event-Based-Banking-Application/arya-banking-maven-registry</url>
         </repository>
     </repositories>
 
@@ -68,6 +69,28 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Source: https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.13.2</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.arya.banking</groupId>
+            <artifactId>arya-banking-outbox-service</artifactId>
+            <version>${arya-banking-outbox-service-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.arya.banking</groupId>
             <artifactId>arya-banking-common</artifactId>

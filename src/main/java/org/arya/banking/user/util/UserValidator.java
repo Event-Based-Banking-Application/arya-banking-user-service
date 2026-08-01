@@ -1,5 +1,6 @@
 package org.arya.banking.user.util;
 
+import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.avro.UserCreateEvent;
@@ -8,8 +9,9 @@ import org.arya.banking.common.model.RegistrationProgress;
 import org.arya.banking.common.model.SecurityDetails;
 import org.arya.banking.common.model.User;
 import org.arya.banking.common.utils.CommonUtils;
-import org.arya.banking.user.config.kafka.UserCreateProducer;
+import org.arya.banking.user.outbox.UserOutboxEvent;
 import org.arya.banking.user.repository.RegistrationProgressRepository;
+import org.arya.banking.user.repository.UserOutboxEventRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.function.Function;
 import static org.arya.banking.common.constants.RegistrationConstants.ADD_ADDRESS;
 import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
 import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
+import static org.arya.banking.common.model.OutboxStatus.PENDING;
+import static org.arya.banking.user.constants.UserOutboxEventType.USER_INSERT;
 
 /**
  * Utility class for validating user registration steps and progress.
@@ -32,7 +36,8 @@ import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_C
 public class UserValidator {
 
     private final RegistrationProgressRepository registrationProgressRepository;
-    private final UserCreateProducer userCreateProducer;
+    private final UserOutboxEventRepository userOutboxEventRepository;
+    private final Gson gson;
 
     private static final List<Function<User, Object>> FIRST_LEVEL = List.of(
             User::getFirstName,
@@ -100,12 +105,12 @@ public class UserValidator {
             registrationProgressRepository.save(progress);
             status = progress.getSubStatus();
         }
-        sendUserEvent(status, userId);
+        insertToUserOutbox(status, userId);
     }
 
-    public void sendUserEvent(String status, String userId) {
+    public void insertToUserOutbox(String status, String userId) {
         log.info("Send :{}, user event", status);
-        userCreateProducer.sendUserCreateEvent(getUserCreateEvent(userId, false, false, status));
+        userOutboxEventRepository.save(getUserOutboxEvent(userId, false, false, status));
     }
 
     /**
@@ -131,11 +136,17 @@ public class UserValidator {
      * @param status the registration status
      * @return UserCreateEvent object
      */
-    public UserCreateEvent getUserCreateEvent(String userId, boolean isContactVerified, boolean isEmailVerified, String status) {
-        return UserCreateEvent.newBuilder()
+    public UserOutboxEvent getUserOutboxEvent(String userId, boolean isContactVerified, boolean isEmailVerified, String status) {
+
+        var userCreateEvent =  UserCreateEvent.newBuilder()
                 .setUserId(userId).setStatus(status)
                 .setIsContactVerified(isContactVerified)
                 .setIsEmailVerified(isEmailVerified).build();
+        return UserOutboxEvent.builder()
+                .aggregateId(userId)
+                .eventType(USER_INSERT.name())
+                .outboxStatus(PENDING).topic("arya-user-svc-usr-update")
+                .payload(gson.toJson(userCreateEvent)).build();
     }
 
     /**

@@ -8,7 +8,6 @@ import org.arya.banking.common.dto.UserResponse;
 import org.arya.banking.common.exception.UserAlreadyExistsException;
 import org.arya.banking.common.exception.UserNotFoundException;
 import org.arya.banking.common.model.*;
-import org.arya.banking.user.config.kafka.UserCreateProducer;
 import org.arya.banking.user.dto.RegisterDto;
 import org.arya.banking.user.dto.UpdateAddressDto;
 import org.arya.banking.user.dto.UpdateContactDto;
@@ -17,6 +16,7 @@ import org.arya.banking.user.external.KeyCloakService;
 import org.arya.banking.user.mapper.UserMapper;
 import org.arya.banking.user.repository.RegistrationProgressRepository;
 import org.arya.banking.user.repository.SecurityDetailsRepository;
+import org.arya.banking.user.repository.UserOutboxEventRepository;
 import org.arya.banking.user.repository.UserRepository;
 import org.arya.banking.user.service.UserService;
 import org.arya.banking.user.util.UserValidator;
@@ -56,7 +56,6 @@ public class UserServiceImpl implements UserService {
     private final SecurityDetailsRepository securityDetailsRepository;
     private final UserMapper userMapper;
     private final KeyCloakService keyCloakService;
-    private final UserCreateProducer userCreateProducer;
     private final UserValidator userValidator;
 
     /**
@@ -71,7 +70,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public UserResponse register(RegisterDto registerDto) {
-        
+
         userRepository.findByEmailIdOrPrimaryContactNumber(registerDto.emailId(),
                         registerDto.primaryContactNumber()).ifPresent(user -> { throw new UserAlreadyExistsException(CONFLICT_ERROR_CODE, USER_ALREADY_EXISTS_409, "User already exists"); });
 
@@ -103,7 +102,7 @@ public class UserServiceImpl implements UserService {
                 .loginFailedAttempts(0).build();
         securityDetailsRepository.save(securityDetails);
 
-        userCreateProducer.sendUserCreateEvent(userValidator.getUserCreateEvent(user.getUserId(), false, false, BASIC_DETAILS_ADDED.getSubStatus()));
+
         return new UserResponse(user.getUserId(), "User Registered Successfully", USER_CREATED_201);
     }
 
@@ -156,7 +155,7 @@ public class UserServiceImpl implements UserService {
             userValidator.validateAndInvokeUpdateRegistrationStep(user, false, null);
         } else {
             user.setStatus(UserStatus.BLOCKED.name());
-            userValidator.sendUserEvent(user.getStatus(), userId);
+            userValidator.insertToUserOutbox(user.getStatus(), userId);
         }
         insertOrUpdateUser(user);
         return new UserResponse(user.getUserId(), "User updated successfully", USER_UPDATED_200);

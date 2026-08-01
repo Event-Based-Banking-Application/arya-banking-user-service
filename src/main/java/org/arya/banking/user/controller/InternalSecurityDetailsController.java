@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.arya.banking.common.dto.UserResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.user.dto.UpdateSecurityDetailsDto;
 import org.arya.banking.user.service.SecurityDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/internal/api/security-details")
 @RequiredArgsConstructor
@@ -31,6 +32,7 @@ public class InternalSecurityDetailsController {
     public ResponseEntity<Map<String, String>> updateLoginAttempts(
             @Parameter(description = "Unique user identifier") @PathVariable String userId,
             @Parameter(description = "Whether the login attempt failed") @RequestParam boolean loginFailed) {
+        log.info("Received login failed event");
         UpdateSecurityDetailsDto updateSecurityDetailsDto = new UpdateSecurityDetailsDto(null, loginFailed);
         return ResponseEntity.ok(securityDetailsService.updateSecurityCredentials(userId, updateSecurityDetailsDto));
     }

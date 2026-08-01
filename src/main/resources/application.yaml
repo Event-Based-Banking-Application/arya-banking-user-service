@@ -31,5 +31,12 @@ app:
   security:
     client-registrationId: user-service-client
 
+# application.yml in consuming service
+arya:
+  outbox:
+    enabled: true
+    publish-interval-ms: 10000
+    max-retries: 5
+
 server:
   port: 8086
