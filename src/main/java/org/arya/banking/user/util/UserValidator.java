@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.avro.UserCreateEvent;
 import org.arya.banking.common.constants.RegistrationConstants;
+import org.arya.banking.common.model.OutboxStatus;
 import org.arya.banking.common.model.RegistrationProgress;
 import org.arya.banking.common.model.SecurityDetails;
 import org.arya.banking.common.model.User;
 import org.arya.banking.common.utils.CommonUtils;
+import org.arya.banking.common.utils.EventMetadataFactory;
+import org.arya.banking.user.constants.UserOutboxEventType;
 import org.arya.banking.user.outbox.UserOutboxEvent;
 import org.arya.banking.user.repository.RegistrationProgressRepository;
 import org.arya.banking.user.repository.UserOutboxEventRepository;
@@ -21,6 +24,7 @@ import java.util.function.Function;
 import static org.arya.banking.common.constants.RegistrationConstants.ADD_ADDRESS;
 import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
 import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
+import static org.arya.banking.common.constants.kafka.KafkaConstants.USER_UPDATE_TOPIC;
 import static org.arya.banking.common.model.OutboxStatus.PENDING;
 import static org.arya.banking.user.constants.UserOutboxEventType.USER_INSERT;
 
@@ -105,12 +109,13 @@ public class UserValidator {
             registrationProgressRepository.save(progress);
             status = progress.getSubStatus();
         }
-        insertToUserOutbox(status, userId);
+        UserCreateEvent event = getUserCreateEvent(userId, false, false, status);
+        insertToUserOutbox(userId, event, USER_INSERT, PENDING, USER_UPDATE_TOPIC);
     }
 
-    public void insertToUserOutbox(String status, String userId) {
-        log.info("Send :{}, user event", status);
-        userOutboxEventRepository.save(getUserOutboxEvent(userId, false, false, status));
+    public <T> void insertToUserOutbox(String userId, T event, UserOutboxEventType eventType, OutboxStatus status, String topic) {
+        log.info("Send OutboxEvent for userID:[{}], user event", userId);
+        userOutboxEventRepository.save(getUserOutboxEvent(event, userId, eventType, status, topic));
     }
 
     /**
@@ -131,22 +136,16 @@ public class UserValidator {
      * Creates a UserCreateEvent for user registration event publishing.
      *
      * @param userId the unique identifier of the user
-     * @param isContactVerified whether the contact is verified
-     * @param isEmailVerified whether the email is verified
      * @param status the registration status
      * @return UserCreateEvent object
      */
-    public UserOutboxEvent getUserOutboxEvent(String userId, boolean isContactVerified, boolean isEmailVerified, String status) {
+    public <T> UserOutboxEvent getUserOutboxEvent(T event, String userId, UserOutboxEventType eventType, OutboxStatus status, String topic) {
 
-        var userCreateEvent =  UserCreateEvent.newBuilder()
-                .setUserId(userId).setStatus(status)
-                .setIsContactVerified(isContactVerified)
-                .setIsEmailVerified(isEmailVerified).build();
         return UserOutboxEvent.builder()
                 .aggregateId(userId)
-                .eventType(USER_INSERT.name())
-                .outboxStatus(PENDING).topic("arya-user-svc-usr-update")
-                .payload(gson.toJson(userCreateEvent)).build();
+                .eventType(eventType.name())
+                .outboxStatus(status).topic(topic)
+                .payload(gson.toJson(event)).build();
     }
 
     /**
@@ -204,5 +203,13 @@ public class UserValidator {
         return THIRD_LEVEL.stream()
                 .map(f -> f.apply(securityDetails))
                 .allMatch(CommonUtils::isNotEmpty);
+    }
+
+    public UserCreateEvent getUserCreateEvent(String userId, boolean isContactVerified, boolean isEmailVerified, String status) {
+        return  UserCreateEvent.newBuilder()
+                .setMetadata(EventMetadataFactory.causedByMetadata())
+                .setUserId(userId).setStatus(status)
+                .setIsContactVerified(isContactVerified)
+                .setIsEmailVerified(isEmailVerified).build();
     }
 }

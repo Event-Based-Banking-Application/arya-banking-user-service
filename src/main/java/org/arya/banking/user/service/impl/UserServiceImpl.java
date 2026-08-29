@@ -31,11 +31,14 @@ import java.util.Optional;
 import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
 import static org.arya.banking.common.constants.ResponseCodes.USER_CREATED_201;
 import static org.arya.banking.common.constants.ResponseCodes.USER_UPDATED_200;
+import static org.arya.banking.common.constants.kafka.KafkaConstants.USER_UPDATE_TOPIC;
 import static org.arya.banking.common.exception.ExceptionCode.USER_ALREADY_EXISTS_409;
 import static org.arya.banking.common.exception.ExceptionCode.USER_NOT_FOUND_404;
 import static org.arya.banking.common.exception.ExceptionConstants.CONFLICT_ERROR_CODE;
 import static org.arya.banking.common.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
+import static org.arya.banking.common.model.OutboxStatus.PENDING;
 import static org.arya.banking.common.utils.CommonUtils.generateSHA256hash;
+import static org.arya.banking.user.constants.UserOutboxEventType.USER_UPDATED;
 
 /**
  * Implementation of the UserService interface for managing user operations.
@@ -155,7 +158,10 @@ public class UserServiceImpl implements UserService {
             userValidator.validateAndInvokeUpdateRegistrationStep(user, false, null);
         } else {
             user.setStatus(UserStatus.BLOCKED.name());
-            userValidator.insertToUserOutbox(user.getStatus(), userId);
+            userValidator.insertToUserOutbox(userId,
+                    userValidator.getUserCreateEvent(userId, false, false, user.getStatus()),
+                    USER_UPDATED,
+                    PENDING, USER_UPDATE_TOPIC);
         }
         insertOrUpdateUser(user);
         return new UserResponse(user.getUserId(), "User updated successfully", USER_UPDATED_200);
