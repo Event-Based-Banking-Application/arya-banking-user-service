@@ -3,13 +3,13 @@ package org.arya.banking.user.kafka;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.avro.LoginFailedEvent;
-import org.arya.banking.common.utils.EventContext;
+import org.arya.banking.common.core.utils.EventContext;
 import org.arya.banking.user.dto.UpdateSecurityDetailsDto;
 import org.arya.banking.user.service.SecurityDetailsService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import static org.arya.banking.common.constants.kafka.KafkaConstants.AUTH_FAILED_TOPIC;
+import static org.arya.banking.common.kafka.constants.KafkaConstants.AUTH_FAILED_TOPIC;
 
 @Slf4j
 @Component

@@ -4,13 +4,13 @@ import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.arya.banking.common.avro.UserCreateEvent;
-import org.arya.banking.common.constants.RegistrationConstants;
-import org.arya.banking.common.model.OutboxStatus;
-import org.arya.banking.common.model.RegistrationProgress;
-import org.arya.banking.common.model.SecurityDetails;
-import org.arya.banking.common.model.User;
-import org.arya.banking.common.utils.CommonUtils;
-import org.arya.banking.common.utils.EventMetadataFactory;
+import org.arya.banking.common.core.constants.RegistrationConstants;
+import org.arya.banking.common.core.model.OutboxStatus;
+import org.arya.banking.common.core.model.RegistrationProgress;
+import org.arya.banking.common.core.model.SecurityDetails;
+import org.arya.banking.common.core.model.User;
+import org.arya.banking.common.core.utils.CommonUtils;
+import org.arya.banking.common.kafka.utils.EventMetadataFactory;
 import org.arya.banking.user.constants.UserOutboxEventType;
 import org.arya.banking.user.outbox.UserOutboxEvent;
 import org.arya.banking.user.repository.RegistrationProgressRepository;
@@ -21,11 +21,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.arya.banking.common.constants.RegistrationConstants.ADD_ADDRESS;
-import static org.arya.banking.common.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
-import static org.arya.banking.common.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
-import static org.arya.banking.common.constants.kafka.KafkaConstants.USER_UPDATE_TOPIC;
-import static org.arya.banking.common.model.OutboxStatus.PENDING;
+import static org.arya.banking.common.core.constants.RegistrationConstants.ADD_ADDRESS;
+import static org.arya.banking.common.core.constants.RegistrationConstants.BASIC_DETAILS_ADDED;
+import static org.arya.banking.common.core.constants.RegistrationConstants.SECURITY_CREDENTIALS_ADDED;
+import static org.arya.banking.common.kafka.constants.KafkaConstants.USER_UPDATE_TOPIC;
+import static org.arya.banking.common.core.model.OutboxStatus.PENDING;
 import static org.arya.banking.user.constants.UserOutboxEventType.USER_INSERT;
 
 /**

@@ -1,8 +1,8 @@
 package org.arya.banking.user.config;
 
 import org.apache.avro.specific.SpecificRecord;
-import org.arya.banking.common.config.KafkaConfiguration;
-import org.arya.banking.common.config.MongoConfig;
+import org.arya.banking.common.kafka.config.KafkaConfiguration;
+import org.arya.banking.common.mongo.config.MongoConfig;
 import org.arya.banking.outbox.autoconfigure.OutboxProperties;
 import org.arya.banking.outbox.kafka.OutboxEventProducer;
 import org.arya.banking.outbox.service.OutBoxPublisherService;

@@ -2,7 +2,7 @@ package org.arya.banking.user.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import org.arya.banking.common.model.SecurityQuestions;
+import org.arya.banking.common.core.model.SecurityQuestions;
 
 import java.util.List;
 

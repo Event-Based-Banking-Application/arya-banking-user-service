@@ -3,8 +3,8 @@ package org.arya.banking.user.outbox;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.arya.banking.common.model.OutboxEvent;
-import org.arya.banking.common.model.OutboxStatus;
+import org.arya.banking.common.core.model.OutboxEvent;
+import org.arya.banking.common.core.model.OutboxStatus;
 import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.mongodb.core.mapping.Document;
 

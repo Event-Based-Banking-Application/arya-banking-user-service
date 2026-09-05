@@ -2,7 +2,7 @@ package org.arya.banking.user.repository;
 
 import java.util.Optional;
 
-import org.arya.banking.common.model.User;
+import org.arya.banking.common.core.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

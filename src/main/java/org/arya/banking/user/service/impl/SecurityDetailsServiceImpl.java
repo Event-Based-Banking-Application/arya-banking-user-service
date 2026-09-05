@@ -1,11 +1,11 @@
 package org.arya.banking.user.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.arya.banking.common.dto.UserResponse;
-import org.arya.banking.common.exception.SecurityDetailsNotFoundException;
-import org.arya.banking.common.model.SecurityDetails;
-import org.arya.banking.common.model.SecurityQuestions;
-import org.arya.banking.common.utils.CommonUtils;
+import org.arya.banking.common.core.dto.UserResponse;
+import org.arya.banking.common.core.exception.SecurityDetailsNotFoundException;
+import org.arya.banking.common.core.model.SecurityDetails;
+import org.arya.banking.common.core.model.SecurityQuestions;
+import org.arya.banking.common.core.utils.CommonUtils;
 import org.arya.banking.user.dto.UpdateSecurityDetailsDto;
 import org.arya.banking.user.dto.UserUpdateDto;
 import org.arya.banking.user.repository.SecurityDetailsRepository;
@@ -19,11 +19,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.arya.banking.common.constants.ResponseCodes.SECURITY_DETAILS_UPDATED_200;
-import static org.arya.banking.common.constants.ResponseKeys.*;
-import static org.arya.banking.common.exception.ExceptionCode.SECURITY_DETAILS_NOT_FOUND_404;
-import static org.arya.banking.common.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
-import static org.arya.banking.common.utils.CommonUtils.isNotEmpty;
+import static org.arya.banking.common.core.constants.ResponseCodes.SECURITY_DETAILS_UPDATED_200;
+import static org.arya.banking.common.core.constants.ResponseKeys.*;
+import static org.arya.banking.common.core.exception.ExceptionCode.SECURITY_DETAILS_NOT_FOUND_404;
+import static org.arya.banking.common.core.exception.ExceptionConstants.NOT_FOUND_ERROR_CODE;
+import static org.arya.banking.common.core.utils.CommonUtils.isNotEmpty;
 
 /**
  * Service implementation for managing user security details.

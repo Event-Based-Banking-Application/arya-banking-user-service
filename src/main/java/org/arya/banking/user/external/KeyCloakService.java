@@ -1,8 +1,8 @@
 package org.arya.banking.user.external;
 
-import org.arya.banking.common.config.FeignConfiguration;
-import org.arya.banking.common.dto.KeyCloakResponse;
-import org.arya.banking.common.model.KeyCloakUser;
+import org.arya.banking.common.feign.config.FeignConfiguration;
+import org.arya.banking.common.core.dto.KeyCloakResponse;
+import org.arya.banking.common.core.model.KeyCloakUser;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
